@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Event Registration & Ticketing System - Phase 2 REST API
+  (Lambda + API Gateway + DynamoDB)
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 10
+    MemorySize: 128
+    Environment:
+      Variables:
+        EVENTS_TABLE: !Ref EventsTable
+        REGISTRATIONS_TABLE: !Ref RegistrationsTable
+    Tracing: Active   # X-Ray, helps with Phase 4 monitoring
+
+Resources:
+
+  # ---------------- DynamoDB Tables ----------------
+
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: Events
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: eventId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH
+
+  RegistrationsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: Registrations
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      AttributeDefinitions:
+        - AttributeName: registrationId
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: registrationId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  # ---------------- API Gateway ----------------
+
+  TicketingApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'OPTIONS,POST,GET,DELETE'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  # ---------------- Lambda Functions ----------------
+
+  RegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: register.lambda_handler
+      CodeUri: lambdas/
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RegistrationsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventsTable
+      Events:
+        Register:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketingApi
+            Path: /register
+            Method: POST
+
+  ListEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: list_events.lambda_handler
+      CodeUri: lambdas/
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref EventsTable
+      Events:
+        ListEvents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketingApi
+            Path: /events
+            Method: GET
+
+  GetRegistrationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get_registrations.lambda_handler
+      CodeUri: lambdas/
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref RegistrationsTable
+      Events:
+        GetRegistrations:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketingApi
+            Path: /registrations/{email}
+            Method: GET
+
+  CancelRegistrationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: cancel_registration.lambda_handler
+      CodeUri: lambdas/
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RegistrationsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventsTable
+      Events:
+        CancelRegistration:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketingApi
+            Path: /registration/{id}
+            Method: DELETE
+
+Outputs:
+  ApiUrl:
+    Description: Base URL for the API
+    Value: !Sub "https://${TicketingApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  EventsTableName:
+    Value: !Ref EventsTable
+  RegistrationsTableName:
+    Value: !Ref RegistrationsTable
