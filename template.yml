@@ -76,8 +76,8 @@ Resources:
   RegisterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: register.lambda_handler
-      CodeUri: lambdas/
+      Handler: registerParticipants.app.lambda_handler
+      CodeUri: lambda/
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RegistrationsTable
@@ -94,8 +94,8 @@ Resources:
   ListEventsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: list_events.lambda_handler
-      CodeUri: lambdas/
+      Handler: getEvents.app.lambda_handler
+      CodeUri: lambda/
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
@@ -111,7 +111,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: get_registrations.lambda_handler
-      CodeUri: lambdas/
+      CodeUri: lambda/
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref RegistrationsTable
@@ -127,7 +127,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: cancel_registration.lambda_handler
-      CodeUri: lambdas/
+      CodeUri: lambda/
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RegistrationsTable
