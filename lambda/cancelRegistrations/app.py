@@ -33,3 +33,22 @@ def lambda_handler(event, context):
 
     if "Item" not in lookup:
         return error_response(404, f"Registration '{registration_id}' not found")
+
+    registration = lookup["Item"]
+    try:
+        registrations_table.delete_item(Key={"registrationId": registration_id})
+        events_table.update_item(
+            Key={"eventId": registration["eventId"]},
+            UpdateExpression="SET registeredCount = if_not_exists(registeredCount, :zero) - :inc",
+            ExpressionAttributeValues={":inc": 1, ":zero": 0},
+        )
+    except ClientError as e:
+        resp = getattr(e, "response", {}) or {}
+        err = resp.get("Error", {}) or {}
+        msg = err.get("Message") or str(e)
+        return error_response(500, f"Could not cancel registration: {msg}")
+
+    return response(200, {
+        "message": "Registration cancelled",
+        "registrationId": registration_id,
+    })
