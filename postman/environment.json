@@ -1,0 +1,31 @@
+{
+  "id": "Event-registration-ticketing-env",
+  "name": "Event Ticketing - Local/Dev",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "https://7x9t6hky1e.execute-api.us-east-1.amazonaws.com/prod",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "testEventId",
+      "value": "evt_001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "testEmail",
+      "value": "postman-test@example.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "registrationId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}
