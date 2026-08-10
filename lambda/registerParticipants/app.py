@@ -24,6 +24,7 @@ events_table = dynamodb.Table(os.environ["EVENTS_TABLE"])
 registrations_table = dynamodb.Table(os.environ["REGISTRATIONS_TABLE"])
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PHONE_RE = re.compile(r"^\+?[0-9][0-9\s\-()]{6,19}$")
 
 
 def _extract_client_error_message(error: ClientError) -> str:
@@ -39,6 +40,9 @@ def lambda_handler(event, context):
     event_id = body.get("eventId")
     email = (body.get("email") or "").strip().lower()
     name = (body.get("name") or "").strip()
+    phone = body.get("phone")
+    if phone is not None:
+        phone = str(phone).strip()
 
     # ---- Input validation ----
     if not event_id or not email or not name:
@@ -46,6 +50,9 @@ def lambda_handler(event, context):
 
     if not EMAIL_RE.match(email):
         return error_response(400, "Invalid email format")
+
+    if phone and not PHONE_RE.match(phone):
+        return error_response(400, "Invalid phone number")
 
     # ---- Confirm the event exists ----
     try:
@@ -88,6 +95,8 @@ def lambda_handler(event, context):
         "status": "confirmed",
         "createdAt": datetime.now(timezone.utc).isoformat(),
     }
+    if phone:
+        item["phone"] = phone
 
     try:
         registrations_table.put_item(Item=item)
