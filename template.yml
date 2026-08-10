@@ -1,151 +1,402 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+
 Description: >
-  Event Registration & Ticketing System - Phase 2 REST API
-  (Lambda + API Gateway + DynamoDB)
+  Event Registration & Ticketing System
+  Lambda + API Gateway + DynamoDB + S3 + CloudFront
+
+Parameters:
+
+  FrontendBucketName:
+    Type: String
+    Default: regevents-event-ticketing-frontend-2026
+    Description: Name of the existing S3 bucket used by CloudFront
+
 
 Globals:
+
   Function:
     Runtime: python3.12
     Timeout: 10
     MemorySize: 128
+    Tracing: Active
+
     Environment:
       Variables:
         EVENTS_TABLE: !Ref EventsTable
         REGISTRATIONS_TABLE: !Ref RegistrationsTable
-    Tracing: Active   # X-Ray, helps with Phase 4 monitoring
+
 
 Resources:
 
-  # ---------------- DynamoDB Tables ----------------
+  # ==========================================================
+  # DYNAMODB - EVENTS
+  # ==========================================================
 
   EventsTable:
     Type: AWS::DynamoDB::Table
+
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+
     Properties:
       TableName: Events
       BillingMode: PAY_PER_REQUEST
+
       SSESpecification:
         SSEEnabled: true
+
       AttributeDefinitions:
         - AttributeName: eventId
           AttributeType: S
+
       KeySchema:
         - AttributeName: eventId
           KeyType: HASH
+
+
+  # ==========================================================
+  # DYNAMODB - REGISTRATIONS
+  # ==========================================================
 
   RegistrationsTable:
     Type: AWS::DynamoDB::Table
+
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+
     Properties:
       TableName: Registrations
       BillingMode: PAY_PER_REQUEST
+
       SSESpecification:
         SSEEnabled: true
+
       AttributeDefinitions:
         - AttributeName: registrationId
           AttributeType: S
+
         - AttributeName: email
           AttributeType: S
+
       KeySchema:
         - AttributeName: registrationId
           KeyType: HASH
+
       GlobalSecondaryIndexes:
+
         - IndexName: EmailIndex
+
           KeySchema:
             - AttributeName: email
               KeyType: HASH
+
           Projection:
             ProjectionType: ALL
 
-  # ---------------- API Gateway ----------------
+
+  # ==========================================================
+  # API GATEWAY
+  # ==========================================================
 
   TicketingApi:
     Type: AWS::Serverless::Api
+
     Properties:
       StageName: prod
+
       Cors:
         AllowMethods: "'OPTIONS,POST,GET,DELETE'"
         AllowHeaders: "'Content-Type,Authorization'"
-        AllowOrigin: "'*'"
+        AllowOrigin: "'https://regevents.online'"
 
-  # ---------------- Lambda Functions ----------------
+
+  # ==========================================================
+  # REGISTER PARTICIPANT
+  # ==========================================================
 
   RegisterFunction:
     Type: AWS::Serverless::Function
+
     Properties:
-      Handler: register.lambda_handler
-      CodeUri: lambdas/
+      Handler: registerParticipants.app.lambda_handler
+      CodeUri: lambda/
+
       Policies:
+
         - DynamoDBCrudPolicy:
             TableName: !Ref RegistrationsTable
+
         - DynamoDBCrudPolicy:
             TableName: !Ref EventsTable
+
       Events:
+
         Register:
           Type: Api
+
           Properties:
             RestApiId: !Ref TicketingApi
             Path: /register
             Method: POST
 
+
+  # ==========================================================
+  # LIST EVENTS
+  # ==========================================================
+
   ListEventsFunction:
     Type: AWS::Serverless::Function
+
     Properties:
-      Handler: list_events.lambda_handler
-      CodeUri: lambdas/
+      Handler: getEvents.app.lambda_handler
+      CodeUri: lambda/
+
       Policies:
+
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
+
       Events:
+
         ListEvents:
           Type: Api
+
           Properties:
             RestApiId: !Ref TicketingApi
             Path: /events
             Method: GET
 
+
+  # ==========================================================
+  # GET REGISTRATIONS
+  # ==========================================================
+
   GetRegistrationsFunction:
     Type: AWS::Serverless::Function
+
     Properties:
-      Handler: get_registrations.lambda_handler
-      CodeUri: lambdas/
+      Handler: getRegistrations.app.lambda_handler
+      CodeUri: lambda/
+
       Policies:
+
         - DynamoDBReadPolicy:
             TableName: !Ref RegistrationsTable
+
       Events:
+
         GetRegistrations:
           Type: Api
+
           Properties:
             RestApiId: !Ref TicketingApi
             Path: /registrations/{email}
             Method: GET
 
+
+  # ==========================================================
+  # CANCEL REGISTRATION
+  # ==========================================================
+
   CancelRegistrationFunction:
     Type: AWS::Serverless::Function
+
     Properties:
-      Handler: cancel_registration.lambda_handler
-      CodeUri: lambdas/
+      Handler: cancelRegistrations.app.lambda_handler
+      CodeUri: lambda/
+
       Policies:
+
         - DynamoDBCrudPolicy:
             TableName: !Ref RegistrationsTable
+
         - DynamoDBCrudPolicy:
             TableName: !Ref EventsTable
+
       Events:
+
         CancelRegistration:
           Type: Api
+
           Properties:
             RestApiId: !Ref TicketingApi
             Path: /registration/{id}
             Method: DELETE
 
+
+  # ==========================================================
+  # CLOUDFRONT ORIGIN ACCESS CONTROL
+  # ==========================================================
+
+  FrontendOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+
+    Properties:
+
+      OriginAccessControlConfig:
+
+        Name: !Sub "${AWS::StackName}-frontend-oac"
+
+        Description: >
+          CloudFront access control for the event ticketing frontend
+
+        OriginAccessControlOriginType: s3
+
+        SigningBehavior: always
+
+        SigningProtocol: sigv4
+
+
+  # ==========================================================
+  # CLOUDFRONT DISTRIBUTION
+  # ==========================================================
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+
+    DependsOn:
+      - FrontendOAC
+
+    Properties:
+
+      DistributionConfig:
+
+        Enabled: true
+
+        Comment: !Sub "${AWS::StackName} frontend"
+
+        DefaultRootObject: index.html
+
+        PriceClass: PriceClass_100
+
+        HttpVersion: http2
+
+        Origins:
+
+          - Id: FrontendS3Origin
+
+            DomainName:
+              !Sub "${FrontendBucketName}.s3.${AWS::Region}.amazonaws.com"
+
+            OriginAccessControlId:
+              !GetAtt FrontendOAC.Id
+
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+
+        DefaultCacheBehavior:
+
+          TargetOriginId: FrontendS3Origin
+
+          ViewerProtocolPolicy: redirect-to-https
+
+          AllowedMethods:
+            - GET
+            - HEAD
+
+          CachedMethods:
+            - GET
+            - HEAD
+
+          Compress: true
+
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+
+        CustomErrorResponses:
+
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+
+
+  # ==========================================================
+  # EXISTING S3 BUCKET POLICY
+  # ALLOW ONLY CLOUDFRONT TO READ OBJECTS
+  # ==========================================================
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+
+    Properties:
+
+      Bucket: !Ref FrontendBucketName
+
+      PolicyDocument:
+
+        Version: "2012-10-17"
+
+        Statement:
+
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+
+            Effect: Allow
+
+            Principal:
+              Service: cloudfront.amazonaws.com
+
+            Action:
+              - s3:GetObject
+
+            Resource:
+              !Sub "arn:${AWS::Partition}:s3:::${FrontendBucketName}/*"
+
+            Condition:
+
+              StringEquals:
+
+                AWS:SourceArn:
+                  !Sub >
+                    arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}
+
+
+# ==========================================================
+# OUTPUTS
+# ==========================================================
+
 Outputs:
+
   ApiUrl:
     Description: Base URL for the API
-    Value: !Sub "https://${TicketingApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+    Value:
+      !Sub >
+        https://${TicketingApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+
+
   EventsTableName:
-    Value: !Ref EventsTable
+    Description: Events DynamoDB table
+
+    Value:
+      !Ref EventsTable
+
+
   RegistrationsTableName:
-    Value: !Ref RegistrationsTable
+    Description: Registrations DynamoDB table
+
+    Value:
+      !Ref RegistrationsTable
+
+
+  FrontendBucketName:
+    Description: Existing S3 bucket containing the frontend
+
+    Value:
+      !Ref FrontendBucketName
+
+
+  FrontendDistributionId:
+    Description: CloudFront distribution ID
+
+    Value:
+      !Ref FrontendDistribution
+
+
+  FrontendUrl:
+    Description: Public HTTPS URL for the deployed frontend
+
+    Value:
+      !Sub >
+        https://${FrontendDistribution.DomainName}
+
