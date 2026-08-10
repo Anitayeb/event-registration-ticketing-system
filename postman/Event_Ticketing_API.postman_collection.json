@@ -1,0 +1,242 @@
+{
+  "info": {
+    "name": "Event Registration & Ticketing API",
+    "description": "Tests for the 4 core endpoints of the Event Registration & Ticketing System (Phase 2).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. List Events",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/events", "host": ["{{baseUrl}}"], "path": ["events"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Response has events array', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('events');",
+              "    pm.expect(body.events).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('Response time is under 2s', () => {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Register - Happy Path",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"{{testEventId}}\",\n  \"email\": \"{{testEmail}}\",\n  \"name\": \"Postman Test User\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/register", "host": ["{{baseUrl}}"], "path": ["register"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+              "",
+              "pm.test('Returns a registration with an id', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('registration');",
+              "    pm.expect(body.registration).to.have.property('registrationId');",
+              "    // save it for later requests in this collection run",
+              "    pm.environment.set('registrationId', body.registration.registrationId);",
+              "});",
+              "",
+              "pm.test('Registration email matches request', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.registration.email).to.eql(pm.environment.get('testEmail'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Register - Missing Fields (expect 400)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"{{testEventId}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/register", "host": ["{{baseUrl}}"], "path": ["register"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 400', () => pm.response.to.have.status(400));",
+              "",
+              "pm.test('Response has an error message', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('error');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Register - Duplicate (expect 409)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"{{testEventId}}\",\n  \"email\": \"{{testEmail}}\",\n  \"name\": \"Postman Test User\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/register", "host": ["{{baseUrl}}"], "path": ["register"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Depends on request #2 having already registered this email for this event",
+              "pm.test('Status code is 409 (duplicate)', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Get Registrations by Email",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/registrations/{{testEmail}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["registrations", "{{testEmail}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Contains the registration created earlier', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.registrations).to.be.an('array').that.is.not.empty;",
+              "    const ids = body.registrations.map(r => r.registrationId);",
+              "    pm.expect(ids).to.include(pm.environment.get('registrationId'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Cancel Registration",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/registration/{{registrationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["registration", "{{registrationId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Confirmation message returned', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.message).to.include('cancelled');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Cancel Same Registration Again (expect 404)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/registration/{{registrationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["registration", "{{registrationId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 404 (already cancelled)', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Get Registrations After Cancel (expect empty)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/registrations/{{testEmail}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["registrations", "{{testEmail}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Registration list no longer contains the cancelled id', () => {",
+              "    const body = pm.response.json();",
+              "    const ids = body.registrations.map(r => r.registrationId);",
+              "    pm.expect(ids).to.not.include(pm.environment.get('registrationId'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": { "type": "text/javascript", "exec": [""] }
+    }
+  ]
+}

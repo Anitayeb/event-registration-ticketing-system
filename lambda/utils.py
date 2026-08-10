@@ -12,7 +12,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",          # tighten to your domain in prod
+    "Access-Control-Allow-Origin": "*",  # tighten to your domain in prod
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
     "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE",
 }
@@ -20,6 +20,7 @@ CORS_HEADERS = {
 
 class DecimalEncoder(json.JSONEncoder):
     """DynamoDB returns Decimal types; json.dumps can't serialize them natively."""
+
     def default(self, o):
         if isinstance(o, decimal.Decimal):
             return int(o) if o % 1 == 0 else float(o)
