@@ -4,9 +4,16 @@ name: CI/CD - Event Registration & Ticketing Backend
 # only when changes land on main.
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'chore/**'
+
   pull_request:
-    branches: [develop, main]
+    branches:
+      - develop
+      - main
 
 permissions:
   id-token: write   # needed for OIDC auth to AWS (no long-lived secrets)
