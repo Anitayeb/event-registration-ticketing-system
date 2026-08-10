@@ -6,7 +6,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [develop, main]
 
 permissions:
   id-token: write   # needed for OIDC auth to AWS (no long-lived secrets)
