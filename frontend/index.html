@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RegEvents — Event Registration &amp; Ticketing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header" id="top">
+  <div class="header-inner">
+    <a class="wordmark" href="#top">
+      <span class="wordmark-mark" aria-hidden="true">&#9992;</span>
+      RegEvents
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="#register">Register</a>
+      <a href="#events">Events</a>
+      <a href="#tickets">My Tickets</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-glow" aria-hidden="true"></div>
+
+  <div class="hero-corner-ticket" aria-hidden="true">
+    <p class="hero-ticket-eyebrow">Admit one</p>
+    <p class="hero-ticket-title">RegEvents</p>
+    <div class="hero-ticket-perf"></div>
+    <p class="hero-ticket-code">GP&nbsp;·&nbsp;2026</p>
+  </div>
+
+  <div class="hero-inner">
+    <p class="eyebrow reveal">Live in Accra &amp; online</p>
+    <h1 id="hero-heading" class="reveal">Events fill up fast.<br>Get in before they don't.</h1>
+    <p class="hero-sub reveal">RegEvents turns a spreadsheet of RSVPs into an actual ticket — register in seconds and watch your pass build itself as you type.</p>
+
+    <div class="hero-actions reveal">
+      <a href="#register" class="btn btn-primary">Register now</a>
+      <a href="#events" class="btn btn-outline-light">Browse events</a>
+    </div>
+
+    <div class="hero-stat-rail reveal" id="hero-stats">
+      <div class="stat-chip">
+        <p class="stat-chip-label">Open events</p>
+        <p class="stat-chip-value" id="stat-open">0</p>
+      </div>
+      <div class="stat-chip">
+        <p class="stat-chip-label">Seats left</p>
+        <p class="stat-chip-value" id="stat-seats">0</p>
+      </div>
+      <div class="stat-chip">
+        <p class="stat-chip-label">Avg. fill rate</p>
+        <p class="stat-chip-value" id="stat-fill">0%</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main>
+
+  <section class="register-section" id="register" aria-labelledby="register-heading">
+    <div class="section-head reveal">
+      <p class="eyebrow">Step 01 — Claim a seat</p>
+      <h2 id="register-heading">Get your ticket</h2>
+      <p class="section-sub">Pick an event and watch your pass build itself as you fill in your details.</p>
+    </div>
+
+    <div class="register-stack">
+
+      <div class="ticket-preview reveal" id="ticket-preview" aria-label="Live ticket preview">
+        <div class="preview-ticket">
+          <div class="preview-main">
+            <p class="preview-eyebrow">Admit one</p>
+            <h3 class="preview-event" id="preview-event">Select an event</h3>
+            <p class="preview-meta" id="preview-meta">&mdash;</p>
+          </div>
+          <div class="preview-perf" aria-hidden="true"></div>
+          <div class="preview-mid">
+            <p class="preview-name" id="preview-name">Your name</p>
+          </div>
+          <div class="preview-perf" aria-hidden="true"></div>
+          <div class="preview-stub">
+            <span id="preview-status" class="status-pill status-pill--pending">Pending</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ticket-form-wrap reveal">
+        <form class="ticket-form" id="registration-form" novalidate aria-describedby="form-error">
+
+          <div class="field-row">
+            <div class="field">
+              <label for="event-select">Event</label>
+              <select id="event-select" name="event" required>
+                <option value="" disabled selected>Choose an event&hellip;</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="full-name">Full name</label>
+              <input type="text" id="full-name" name="fullName" autocomplete="name" required placeholder="Ama Owusu">
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="email">Email address</label>
+              <input type="email" id="email" name="email" autocomplete="email" required placeholder="ama@company.com">
+            </div>
+
+            <div class="field">
+              <label for="phone">Phone <span class="optional">(optional)</span></label>
+              <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="+233 55 000 0000">
+            </div>
+          </div>
+
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+
+          <button type="submit" class="btn btn-primary" id="submit-btn">
+            <span class="btn-label">Register</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <div class="confirmation" id="confirmation" hidden aria-live="polite">
+          <div class="boarding-pass">
+            <div class="pass-main">
+              <p class="eyebrow">Registration confirmed</p>
+              <h3 id="conf-event-name">&mdash;</h3>
+              <dl class="pass-details">
+                <div><dt>Attendee</dt><dd id="conf-attendee">&mdash;</dd></div>
+                <div><dt>Email</dt><dd id="conf-email">&mdash;</dd></div>
+                <div><dt>Date</dt><dd id="conf-date">&mdash;</dd></div>
+              </dl>
+            </div>
+            <div class="pass-perf" aria-hidden="true"></div>
+            <div class="pass-stub">
+              <p class="stub-label">Reg. ID</p>
+              <p class="stub-id" id="conf-id">GP-000000</p>
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost" id="register-another-btn">Register another attendee</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="events-section" id="events" aria-labelledby="events-heading">
+    <div class="section-head reveal">
+      <p class="eyebrow">Step 02 — Browse</p>
+      <h2 id="events-heading">Available events</h2>
+      <p class="section-sub">The soonest event is featured below; the rest are listed underneath.</p>
+    </div>
+
+    <div class="featured-event" id="featured-event">
+      <!-- Featured (soonest) event card is rendered here by script.js -->
+    </div>
+
+    <ul class="events-list" id="events-grid">
+      <!-- Remaining events are rendered here as list rows by script.js -->
+    </ul>
+  </section>
+
+  <section class="tickets-section" id="tickets" aria-labelledby="tickets-heading">
+    <div class="section-head reveal">
+      <p class="eyebrow">Step 03 — Manage</p>
+      <h2 id="tickets-heading">Find your tickets</h2>
+      <p class="section-sub">Look up every registration tied to your email, and cancel if your plans change.</p>
+    </div>
+
+    <form class="lookup-form" id="lookup-form" novalidate aria-describedby="lookup-error">
+      <div class="field">
+        <label for="lookup-email">Email address</label>
+        <input type="email" id="lookup-email" name="lookupEmail" autocomplete="email" required placeholder="ama@company.com">
+      </div>
+      <button type="submit" class="btn btn-primary" id="lookup-btn">
+        <span class="btn-label">Find my tickets</span>
+        <span class="btn-spinner" aria-hidden="true"></span>
+      </button>
+    </form>
+    <p class="form-error" id="lookup-error" role="alert" hidden></p>
+
+    <div class="tickets-results" id="tickets-results" aria-live="polite"></div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>RegEvents — built for events that fill up fast.</p>
+</footer>
+
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal" id="event-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button type="button" class="modal-close" id="modal-close" aria-label="Close details">&times;</button>
+    <p class="eyebrow" id="modal-status-eyebrow">Event details</p>
+    <h3 id="modal-title">&mdash;</h3>
+    <dl class="modal-details">
+      <div><dt>Date</dt><dd id="modal-date">&mdash;</dd></div>
+      <div><dt>Time</dt><dd id="modal-time">&mdash;</dd></div>
+      <div><dt>Venue</dt><dd id="modal-venue">&mdash;</dd></div>
+      <div><dt>Seats left</dt><dd id="modal-seats">&mdash;</dd></div>
+    </dl>
+    <p class="modal-description" id="modal-description">&mdash;</p>
+    <span id="modal-badge" class="status-pill">Available</span>
+    <button type="button" class="btn btn-primary modal-register-btn" id="modal-register-btn">Register for this event</button>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
