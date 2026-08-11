@@ -119,7 +119,7 @@ jobs:
       - name: SAM deploy
         run: |
           sam deploy \
-            --stack-name Event-Registration-Ticketing-System \
+            --stack-name Event-registration-ticketing-system \
             --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
@@ -129,7 +129,7 @@ jobs:
         id: get-url
         run: |
           API_URL=$(aws cloudformation describe-stacks \
-            --stack-name Event-Registration-Ticketing-System \
+            --stack-name Event-registration-ticketing-system \
             --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
             --output text)
           echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
@@ -176,11 +176,11 @@ jobs:
         id: get-frontend
         run: |
           BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name Event-Registration-Ticketing-System \
+            --stack-name Event-registration-ticketing-system \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
             --output text)
           DIST_ID=$(aws cloudformation describe-stacks \
-            --stack-name Event-Registration-Ticketing-System \
+            --stack-name Event-registration-ticketing-system \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendDistributionId'].OutputValue" \
             --output text)
           echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
