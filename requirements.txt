@@ -1,0 +1,14 @@
+# Local development & testing dependencies.
+# (Deployed Lambda runtime dependencies live in lambda/requirements.txt)
+ 
+boto3>=1.34          # AWS SDK, also needed locally to run/test handlers
+botocore>=1.34
+ 
+pytest>=8.0           # test runner
+pytest-mock>=3.14      # mocking helpers for unit tests
+moto>=5.0              # mocks DynamoDB/AWS services in tests, no real AWS calls needed
+ 
+aws-sam-cli>=1.120     # `sam build` / `sam local` / `sam deploy` (optional if installed via brew/installer instead)
+ 
+flake8>=7.0            # linting, useful for a Phase 3 CI lint step
+black>=24.0             # code formatting
