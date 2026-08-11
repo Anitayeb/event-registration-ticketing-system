@@ -1,7 +1,7 @@
 """
 Shared helper functions used by all Lambda handlers.
-Keeps CORS headers, response formatting, and logging consistent
-across every endpoint (DRY + easier to pass code review).
+Keeps CORS headers, response formatting, JSON serialization,
+and logging consistent across every endpoint.
 """
 
 import json
@@ -10,6 +10,13 @@ import decimal
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+ALLOWED_ORIGINS = {
+    "https://regevents.online",
+    "https://www.regevents.online",
+}
+
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",  # tighten to your domain in prod
@@ -47,3 +54,7 @@ def parse_body(event: dict) -> dict:
         return json.loads(event.get("body") or "{}")
     except json.JSONDecodeError:
         raise ValueError("Request body is not valid JSON")
+
+
+
+
