@@ -18,26 +18,11 @@ ALLOWED_ORIGINS = {
 }
 
 
-def get_cors_headers(event: dict) -> dict:
-    """Return CORS headers for an approved frontend origin."""
-
-    request_headers = event.get("headers") or {}
-
-    origin = (
-        request_headers.get("origin")
-        or request_headers.get("Origin")
-        or ""
-    )
-
-    headers = {
-        "Access-Control-Allow-Headers": "Content-Type,Authorization",
-        "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE",
-    }
-
-    if origin in ALLOWED_ORIGINS:
-        headers["Access-Control-Allow-Origin"] = origin
-
-    return headers
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",  # tighten to your domain in prod
+    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE",
+}
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -46,48 +31,30 @@ class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, decimal.Decimal):
             return int(o) if o % 1 == 0 else float(o)
-
         return super().default(o)
 
 
-def response(
-    status_code: int,
-    body: dict,
-    event: dict | None = None
-) -> dict:
+def response(status_code: int, body: dict) -> dict:
     """Standard API Gateway Lambda proxy response."""
-
     return {
         "statusCode": status_code,
-        "headers": {
-            **get_cors_headers(event or {}),
-            "Content-Type": "application/json",
-        },
+        "headers": {**CORS_HEADERS, "Content-Type": "application/json"},
         "body": json.dumps(body, cls=DecimalEncoder),
     }
 
 
-def error_response(
-    status_code: int,
-    message: str,
-    event: dict | None = None
-) -> dict:
-    """Standard API error response."""
-
+def error_response(status_code: int, message: str) -> dict:
     logger.error(message)
-
-    return response(
-        status_code,
-        {"error": message},
-        event
-    )
+    return response(status_code, {"error": message})
 
 
 def parse_body(event: dict) -> dict:
     """Safely parse the JSON body from an API Gateway proxy event."""
-
     try:
         return json.loads(event.get("body") or "{}")
-
     except json.JSONDecodeError:
         raise ValueError("Request body is not valid JSON")
+
+
+
+

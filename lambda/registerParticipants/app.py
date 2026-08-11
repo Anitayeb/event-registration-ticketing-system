@@ -24,6 +24,7 @@ events_table = dynamodb.Table(os.environ["EVENTS_TABLE"])
 registrations_table = dynamodb.Table(os.environ["REGISTRATIONS_TABLE"])
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PHONE_RE = re.compile(r"^\+?[0-9][0-9\s\-()]{7,19}$")
 
 
 def _extract_client_error_message(error: ClientError) -> str:
@@ -39,6 +40,7 @@ def lambda_handler(event, context):
     event_id = body.get("eventId")
     email = (body.get("email") or "").strip().lower()
     name = (body.get("name") or "").strip()
+    phone = (body.get("phone") or "").strip()
 
     # ---- Input validation ----
     if not event_id or not email or not name:
@@ -46,6 +48,8 @@ def lambda_handler(event, context):
 
     if not EMAIL_RE.match(email):
         return error_response(400, "Invalid email format")
+    if phone and not PHONE_RE.match(phone):
+        return error_response(400, "Invalid phone number format")
 
     # ---- Confirm the event exists ----
     try:
@@ -67,10 +71,14 @@ def lambda_handler(event, context):
         )
         for reg in existing.get("Items", []):
             if reg["eventId"] == event_id:
-                return error_response(409, "This email is already registered for this event")
+                return error_response(
+                    409, "This email is already registered for this event"
+                )
     except ClientError as e:
         error_msg = _extract_client_error_message(e)
-        return error_response(500, f"Could not check existing registrations: {error_msg}")
+        return error_response(
+            500, f"Could not check existing registrations: {error_msg}"
+        )
 
     # ---- Capacity check (optional field on the event item) ----
     capacity = event_item.get("capacity")
@@ -88,6 +96,8 @@ def lambda_handler(event, context):
         "status": "confirmed",
         "createdAt": datetime.now(timezone.utc).isoformat(),
     }
+    if phone:
+        item["phone"] = phone
 
     try:
         registrations_table.put_item(Item=item)
