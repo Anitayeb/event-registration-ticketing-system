@@ -113,18 +113,11 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Verify AWS identity
+      - name: Verify AWS Credentials
         run: |
           echo "AWS identity:"
           aws sts get-caller-identity
-
-          echo "Testing CloudFormation access:" 
-          aws cloudformation describe-stacks \ 
-          --stack-name Event-registration-ticketing-system \ 
-          --region us-east-1 \ 
-          --no-cli-pager || true 
-          
-          echo "AWS deployment role is authenticated successfully."
+             echo "AWS Credentials are successfully."
 
       - name: SAM build
         run: sam build
