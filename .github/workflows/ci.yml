@@ -113,6 +113,17 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Verify AWS deployment permissions
+        run: |
+          echo "AWS identity:"
+          aws sts get-caller-identity
+
+          echo "Testing iam:GetRole:"
+          aws iam get-role \
+            --role-name Event-registration-ticketing-ListEventsFunctionRole-660UuTUAMpjV \
+            --query "Role.Arn" \
+            --output text
+            
       - name: SAM build
         run: sam build
 
