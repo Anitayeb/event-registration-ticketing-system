@@ -1,151 +1,334 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+
 Description: >
-  Event Registration & Ticketing System - Phase 2 REST API
-  (Lambda + API Gateway + DynamoDB)
+  Event Registration & Ticketing System
+  Lambda + API Gateway + DynamoDB + Existing S3 + Existing CloudFront
+
+# ==========================================================
+# PARAMETERS
+# ==========================================================
+
+Parameters:
+
+  FrontendBucketName:
+    Type: String
+    Default: regevents-event-ticketing-frontend-2026
+    Description: Existing S3 bucket containing the frontend
+
+  FrontendDistributionId:
+    Type: String
+    Default: E3VMGQHRIM0E4W
+    Description: Existing CloudFront distribution ID
+
+  FrontendDistributionDomain:
+    Type: String
+    Default: dk98ds84b7l8t.cloudfront.net
+    Description: Existing CloudFront distribution domain
+
+
+# ==========================================================
+# GLOBAL LAMBDA SETTINGS
+# ==========================================================
 
 Globals:
+
   Function:
     Runtime: python3.12
     Timeout: 10
     MemorySize: 128
+    Tracing: Active
+
     Environment:
       Variables:
         EVENTS_TABLE: !Ref EventsTable
         REGISTRATIONS_TABLE: !Ref RegistrationsTable
-    Tracing: Active   # X-Ray, helps with Phase 4 monitoring
+
+
+# ==========================================================
+# RESOURCES
+# ==========================================================
 
 Resources:
 
-  # ---------------- DynamoDB Tables ----------------
+
+  # ========================================================
+  # DYNAMODB - EVENTS
+  # ========================================================
 
   EventsTable:
     Type: AWS::DynamoDB::Table
+
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+
     Properties:
       TableName: Events
+
       BillingMode: PAY_PER_REQUEST
+
       SSESpecification:
         SSEEnabled: true
+
       AttributeDefinitions:
         - AttributeName: eventId
           AttributeType: S
+
       KeySchema:
         - AttributeName: eventId
           KeyType: HASH
+
+
+  # ========================================================
+  # DYNAMODB - REGISTRATIONS
+  # ========================================================
 
   RegistrationsTable:
     Type: AWS::DynamoDB::Table
+
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+
     Properties:
       TableName: Registrations
+
       BillingMode: PAY_PER_REQUEST
+
       SSESpecification:
         SSEEnabled: true
+
       AttributeDefinitions:
         - AttributeName: registrationId
           AttributeType: S
+
         - AttributeName: email
           AttributeType: S
+
       KeySchema:
         - AttributeName: registrationId
           KeyType: HASH
+
       GlobalSecondaryIndexes:
+
         - IndexName: EmailIndex
+
           KeySchema:
             - AttributeName: email
               KeyType: HASH
+
           Projection:
             ProjectionType: ALL
 
-  # ---------------- API Gateway ----------------
+
+  # ========================================================
+  # API GATEWAY
+  # ========================================================
 
   TicketingApi:
     Type: AWS::Serverless::Api
+
     Properties:
+
       StageName: prod
+
       Cors:
         AllowMethods: "'OPTIONS,POST,GET,DELETE'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
 
-  # ---------------- Lambda Functions ----------------
+
+  # ========================================================
+  # REGISTER PARTICIPANT
+  # POST /register
+  # ========================================================
 
   RegisterFunction:
     Type: AWS::Serverless::Function
+
     Properties:
+
       Handler: registerParticipants.app.lambda_handler
+
       CodeUri: lambda/
+
       Policies:
+
         - DynamoDBCrudPolicy:
             TableName: !Ref RegistrationsTable
+
         - DynamoDBCrudPolicy:
             TableName: !Ref EventsTable
+
       Events:
+
         Register:
           Type: Api
+
           Properties:
             RestApiId: !Ref TicketingApi
             Path: /register
             Method: POST
 
+
+  # ========================================================
+  # LIST EVENTS
+  # GET /events
+  # ========================================================
+
   ListEventsFunction:
     Type: AWS::Serverless::Function
+
     Properties:
+
       Handler: getEvents.app.lambda_handler
+
       CodeUri: lambda/
+
       Policies:
+
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
+
       Events:
+
         ListEvents:
           Type: Api
+
           Properties:
             RestApiId: !Ref TicketingApi
             Path: /events
             Method: GET
 
+
+  # ========================================================
+  # GET REGISTRATIONS
+  # GET /registrations/{email}
+  # ========================================================
+
   GetRegistrationsFunction:
     Type: AWS::Serverless::Function
+
     Properties:
+
       Handler: getRegistrations.app.lambda_handler
+
       CodeUri: lambda/
+
       Policies:
+
         - DynamoDBReadPolicy:
             TableName: !Ref RegistrationsTable
+
       Events:
+
         GetRegistrations:
           Type: Api
+
           Properties:
             RestApiId: !Ref TicketingApi
             Path: /registrations/{email}
             Method: GET
 
+
+  # ========================================================
+  # CANCEL REGISTRATION
+  # DELETE /registration/{id}
+  # ========================================================
+
   CancelRegistrationFunction:
     Type: AWS::Serverless::Function
+
     Properties:
-      Handler: cancelRegistration.app.lambda_handler
+
+      Handler: cancelRegistrations.app.lambda_handler
+
       CodeUri: lambda/
+
       Policies:
+
         - DynamoDBCrudPolicy:
             TableName: !Ref RegistrationsTable
+
         - DynamoDBCrudPolicy:
             TableName: !Ref EventsTable
+
       Events:
+
         CancelRegistration:
           Type: Api
+
           Properties:
             RestApiId: !Ref TicketingApi
             Path: /registration/{id}
             Method: DELETE
 
+
+# ==========================================================
+# OUTPUTS
+# ==========================================================
+
 Outputs:
+
+
+  # ========================================================
+  # API URL
+  # ========================================================
+
   ApiUrl:
     Description: Base URL for the API
-    Value: !Sub "https://${TicketingApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+    Value:
+      !Sub >
+        https://${TicketingApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+
+
+  # ========================================================
+  # DYNAMODB OUTPUTS
+  # ========================================================
+
   EventsTableName:
-    Value: !Ref EventsTable
+    Description: Events DynamoDB table
+
+    Value:
+      !Ref EventsTable
+
+
   RegistrationsTableName:
-    Value: !Ref RegistrationsTable
+    Description: Registrations DynamoDB table
+
+    Value:
+      !Ref RegistrationsTable
+
+
+  # ========================================================
+  # EXISTING FRONTEND S3 BUCKET
+  # ========================================================
+
+  FrontendBucketName:
+    Description: Existing S3 bucket containing the frontend
+
+    Value:
+      !Ref FrontendBucketName
+
+
+  # ========================================================
+  # EXISTING CLOUDFRONT DISTRIBUTION
+  # ========================================================
+
+  FrontendDistributionId:
+    Description: Existing CloudFront distribution ID
+
+    Value:
+      !Ref FrontendDistributionId
+
+
+  # ========================================================
+  # FRONTEND URL
+  # ========================================================
+
+  FrontendUrl:
+    Description: Public HTTPS URL for the frontend
+
+    Value:
+      !Sub >
+        https://${FrontendDistributionDomain}

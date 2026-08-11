@@ -1,0 +1,26 @@
+{
+  "eventId": {
+    "S": "evt_002"
+  },
+  "name": {
+    "S": "AWS Community Day"
+  },
+  "date": {
+    "S": "2026-09-07"
+  },
+  "time": {
+    "S": "11:00 AM"
+  },
+  "venue": {
+    "S": "Accra Digital Centre"
+  },
+  "description": {
+    "S": "A day of talks on serverless architecture."
+  },
+  "capacity": {
+    "N": "100"
+  },
+  "registeredCount": {
+    "N": "0"
+  }
+}
