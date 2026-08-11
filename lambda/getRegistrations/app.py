@@ -33,6 +33,9 @@ def lambda_handler(event, context):
 
     items = result.get("Items", [])
     if not items:
-        return response(200, {"email": email, "registrations": [], "message": "No registrations found"})
+        return response(
+            200,
+            {"email": email, "registrations": [], "message": "No registrations found"},
+        )
 
     return response(200, {"email": email, "registrations": items})

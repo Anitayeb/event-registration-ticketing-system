@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+env/
+venv/
+.venv/
+Pipfile.lock
+
+# AWS SAM / CloudFormation
+.aws-sam/
+.sam/*
+*.aws-sam
+*.template
+
+# AWS credential files
+.aws/
+credentials
+config
+
+# IDE / editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Local environment files
+.env
+*.env
+
+# Byte-compiled / distribution
+build/
+dist/
+*.egg-info/
+*.eggs/
+site/

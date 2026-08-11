@@ -1,0 +1,17 @@
+{
+  "eventId": {
+    "S": "evt_001"
+  },
+  "name": {
+    "S": "Engineering Society Day"
+  },
+  "date": {
+    "S": "2026-09-01"
+  },
+  "capacity": {
+    "N": "100"
+  },
+  "registeredCount": {
+    "N": "0"
+  }
+}
