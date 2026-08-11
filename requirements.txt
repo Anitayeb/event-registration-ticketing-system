@@ -1,4 +1,3 @@
-rements · TXT
 # Local development & testing dependencies.
 # (Deployed Lambda runtime dependencies live in lambda/requirements.txt)
  
