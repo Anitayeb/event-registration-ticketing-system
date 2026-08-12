@@ -198,7 +198,7 @@ jobs:
           // Auto-generated at $(date -u +"%Y-%m-%dT%H:%M:%SZ") by .github/workflows/ci.yml
           // Do not hand-edit — this file is overwritten on every deploy to main.
           window.APP_CONFIG = {
-            apiBase: "${{ needs.deploy.outputs.api_url }}"
+            apiBaseURL: "${{ needs.deploy.outputs.api_url }}"
           };
           EOF
           cat frontend/config.js
