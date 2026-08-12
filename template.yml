@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 
 Description: >
   Event Registration & Ticketing System
-  Lambda + API Gateway + DynamoDB + Existing S3 + Existing CloudFront
+  Lambda + API Gateway + DynamoDB + Existing S3 + CloudFront
 
 # ==========================================================
 # PARAMETERS
@@ -15,17 +15,6 @@ Parameters:
     Type: String
     Default: regevents-event-ticketing-frontend-2026
     Description: Existing S3 bucket containing the frontend
-
-  FrontendDistributionId:
-    Type: String
-    Default: E3VMGQHRIM0E4W
-    Description: Existing CloudFront distribution ID
-
-  FrontendDistributionDomain:
-    Type: String
-    Default: dk98ds84b7l8t.cloudfront.net
-    Description: Existing CloudFront distribution domain
-
 
 # ==========================================================
 # GLOBAL LAMBDA SETTINGS
@@ -44,13 +33,11 @@ Globals:
         EVENTS_TABLE: !Ref EventsTable
         REGISTRATIONS_TABLE: !Ref RegistrationsTable
 
-
 # ==========================================================
 # RESOURCES
 # ==========================================================
 
 Resources:
-
 
   # ========================================================
   # DYNAMODB - EVENTS
@@ -58,13 +45,11 @@ Resources:
 
   EventsTable:
     Type: AWS::DynamoDB::Table
-
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
 
     Properties:
       TableName: Events
-
       BillingMode: PAY_PER_REQUEST
 
       SSESpecification:
@@ -78,20 +63,17 @@ Resources:
         - AttributeName: eventId
           KeyType: HASH
 
-
   # ========================================================
   # DYNAMODB - REGISTRATIONS
   # ========================================================
 
   RegistrationsTable:
     Type: AWS::DynamoDB::Table
-
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
 
     Properties:
       TableName: Registrations
-
       BillingMode: PAY_PER_REQUEST
 
       SSESpecification:
@@ -109,7 +91,6 @@ Resources:
           KeyType: HASH
 
       GlobalSecondaryIndexes:
-
         - IndexName: EmailIndex
 
           KeySchema:
@@ -119,7 +100,6 @@ Resources:
           Projection:
             ProjectionType: ALL
 
-
   # ========================================================
   # API GATEWAY
   # ========================================================
@@ -128,14 +108,12 @@ Resources:
     Type: AWS::Serverless::Api
 
     Properties:
-
       StageName: prod
 
       Cors:
         AllowMethods: "'OPTIONS,POST,GET,DELETE'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
-
 
   # ========================================================
   # REGISTER PARTICIPANT
@@ -146,13 +124,10 @@ Resources:
     Type: AWS::Serverless::Function
 
     Properties:
-
       Handler: registerParticipants.app.lambda_handler
-
       CodeUri: lambda/
 
       Policies:
-
         - DynamoDBCrudPolicy:
             TableName: !Ref RegistrationsTable
 
@@ -160,7 +135,6 @@ Resources:
             TableName: !Ref EventsTable
 
       Events:
-
         Register:
           Type: Api
 
@@ -168,7 +142,6 @@ Resources:
             RestApiId: !Ref TicketingApi
             Path: /register
             Method: POST
-
 
   # ========================================================
   # LIST EVENTS
@@ -179,18 +152,14 @@ Resources:
     Type: AWS::Serverless::Function
 
     Properties:
-
       Handler: getEvents.app.lambda_handler
-
       CodeUri: lambda/
 
       Policies:
-
         - DynamoDBReadPolicy:
             TableName: !Ref EventsTable
 
       Events:
-
         ListEvents:
           Type: Api
 
@@ -198,7 +167,6 @@ Resources:
             RestApiId: !Ref TicketingApi
             Path: /events
             Method: GET
-
 
   # ========================================================
   # GET REGISTRATIONS
@@ -209,18 +177,14 @@ Resources:
     Type: AWS::Serverless::Function
 
     Properties:
-
       Handler: getRegistrations.app.lambda_handler
-
       CodeUri: lambda/
 
       Policies:
-
         - DynamoDBReadPolicy:
             TableName: !Ref RegistrationsTable
 
       Events:
-
         GetRegistrations:
           Type: Api
 
@@ -228,7 +192,6 @@ Resources:
             RestApiId: !Ref TicketingApi
             Path: /registrations/{email}
             Method: GET
-
 
   # ========================================================
   # CANCEL REGISTRATION
@@ -239,13 +202,10 @@ Resources:
     Type: AWS::Serverless::Function
 
     Properties:
-
       Handler: cancelRegistrations.app.lambda_handler
-
       CodeUri: lambda/
 
       Policies:
-
         - DynamoDBCrudPolicy:
             TableName: !Ref RegistrationsTable
 
@@ -253,7 +213,6 @@ Resources:
             TableName: !Ref EventsTable
 
       Events:
-
         CancelRegistration:
           Type: Api
 
@@ -262,13 +221,153 @@ Resources:
             Path: /registration/{id}
             Method: DELETE
 
+  # ========================================================
+  # CLOUDFRONT ORIGIN ACCESS CONTROL
+  # ========================================================
+
+  FrontendOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-FrontendOAC'
+        Description: OAC for frontend S3 bucket
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # ========================================================
+  # CLOUDFRONT DISTRIBUTION
+  # ========================================================
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+
+    Properties:
+      DistributionConfig:
+
+        Enabled: true
+
+        DefaultRootObject: index.html
+
+        # ==================================================
+        # CUSTOM DOMAIN
+        # ==================================================
+
+        Aliases:
+          - regevents.online
+          - www.regevents.online
+
+        # ==================================================
+        # HTTPS CERTIFICATE
+        # ==================================================
+
+        ViewerCertificate:
+          AcmCertificateArn: arn:aws:acm:us-east-1:748503131675:certificate/53bd44f4-505b-4d63-ae17-7fb9dfd73141
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+
+        # ==================================================
+        # S3 ORIGIN
+        # ==================================================
+
+        Origins:
+          - Id: FrontendS3Origin
+
+            DomainName: !Sub '${FrontendBucketName}.s3.${AWS::Region}.amazonaws.com'
+
+            S3OriginConfig: {}
+
+            OriginAccessControlId: !Ref FrontendOAC
+
+        # ==================================================
+        # DEFAULT CACHE BEHAVIOR
+        # ==================================================
+
+        DefaultCacheBehavior:
+
+          TargetOriginId: FrontendS3Origin
+
+          ViewerProtocolPolicy: redirect-to-https
+
+          Compress: true
+
+          AllowedMethods:
+            - GET
+            - HEAD
+
+          CachedMethods:
+            - GET
+            - HEAD
+
+          ForwardedValues:
+            QueryString: false
+
+            Cookies:
+              Forward: none
+
+        # ==================================================
+        # PRICE CLASS
+        # ==================================================
+
+        PriceClass: PriceClass_100
+
+        # ==================================================
+        # SPA ERROR HANDLING
+        # ==================================================
+
+        CustomErrorResponses:
+
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  # ========================================================
+  # S3 BUCKET POLICY FOR CLOUDFRONT OAC
+  # ========================================================
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+
+    Properties:
+
+      Bucket: !Ref FrontendBucketName
+
+      PolicyDocument:
+
+        Version: '2012-10-17'
+
+        Statement:
+
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+
+            Effect: Allow
+
+            Principal:
+              Service: cloudfront.amazonaws.com
+
+            Action:
+              - s3:GetObject
+
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::${FrontendBucketName}/*'
+
+            Condition:
+
+              StringEquals:
+
+                AWS:SourceArn:
+                  !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}'
 
 # ==========================================================
 # OUTPUTS
 # ==========================================================
 
 Outputs:
-
 
   # ========================================================
   # API URL
@@ -278,9 +377,7 @@ Outputs:
     Description: Base URL for the API
 
     Value:
-      !Sub >
-        https://${TicketingApi}.execute-api.${AWS::Region}.amazonaws.com/prod
-
+      !Sub 'https://${TicketingApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
 
   # ========================================================
   # DYNAMODB OUTPUTS
@@ -292,16 +389,14 @@ Outputs:
     Value:
       !Ref EventsTable
 
-
   RegistrationsTableName:
     Description: Registrations DynamoDB table
 
     Value:
       !Ref RegistrationsTable
 
-
   # ========================================================
-  # EXISTING FRONTEND S3 BUCKET
+  # FRONTEND S3 BUCKET
   # ========================================================
 
   FrontendBucketName:
@@ -310,25 +405,34 @@ Outputs:
     Value:
       !Ref FrontendBucketName
 
-
   # ========================================================
-  # EXISTING CLOUDFRONT DISTRIBUTION
+  # CLOUDFRONT DISTRIBUTION ID
   # ========================================================
 
   FrontendDistributionId:
-    Description: Existing CloudFront distribution ID
+    Description: CloudFront distribution ID
 
     Value:
-      !Ref FrontendDistributionId
-
+      !Ref FrontendDistribution
 
   # ========================================================
-  # FRONTEND URL
+  # CLOUDFRONT DOMAIN
+  # ========================================================
+
+  FrontendDistributionDomain:
+    Description: CloudFront distribution domain
+
+    Value:
+      !GetAtt FrontendDistribution.DomainName
+
+  # ========================================================
+  # FRONTEND HTTPS URL
   # ========================================================
 
   FrontendUrl:
     Description: Public HTTPS URL for the frontend
 
     Value:
-      !Sub >
-        https://${FrontendDistributionDomain}
+      !Sub
+        - 'https://${Domain}'
+        - Domain: !GetAtt FrontendDistribution.DomainName
