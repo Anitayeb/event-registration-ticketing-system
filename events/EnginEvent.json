@@ -8,6 +8,12 @@
   "date": {
     "S": "2026-09-01"
   },
+  "time": {
+    "S": "09:00 AM"
+  },
+  "venue": {
+    "S": "International Conference Centre"
+  },
   "capacity": {
     "N": "100"
   },
