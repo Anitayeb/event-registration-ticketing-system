@@ -82,8 +82,11 @@ def lambda_handler(event, context):
             if reg["eventId"] == event_id:
                 return error_response(409, "This email is already registered for this event")
     except ClientError as e:
-        return error_response(500, f"Could not check existing registrations: {e.response['Error']['Message']}")
-
+       return error_response(
+    500,
+    f"Could not check existing registrations: "
+    f"{e.response['Error']['Message']}",
+)
     # ---- Capacity check (optional field on the event item) ----
     capacity = event_item.get("capacity")
     registered_count = event_item.get("registeredCount", 0)
@@ -114,4 +117,4 @@ def lambda_handler(event, context):
     except ClientError as e:
         return error_response(500, f"Could not save registration: {e.response['Error']['Message']}")
 
-    return response(201, {"message": "Registration successful", "registration": item})
+    return response(201, {"message": "Registration successful", "registration": item}) 
