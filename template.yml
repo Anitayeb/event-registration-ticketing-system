@@ -16,6 +16,14 @@ Parameters:
     Default: regevents-event-ticketing-frontend-2026
     Description: Existing S3 bucket containing the frontend
 
+  AlertEmail:
+    Type: String
+    Description: Email address for CloudWatch and budget alerts
+
+  MonthlyBudgetLimitUSD:
+    Type: Number
+    Default: 5
+    Description: Monthly AWS cost budget in USD
 # ==========================================================
 # GLOBAL LAMBDA SETTINGS
 # ==========================================================
@@ -220,6 +228,310 @@ Resources:
             RestApiId: !Ref TicketingApi
             Path: /registration/{id}
             Method: DELETE
+
+# ========================================================
+  # SNS TOPIC FOR ALERTS
+  # ========================================================
+
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-alerts"
+      DisplayName: Event Ticketing Alerts
+
+  AlertsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertsTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+  
+  # ============================================================
+  # AWS BUDGET
+  # ============================================================
+
+  MonthlyCostBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: EventRegistrationMonthlyBudget
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetLimitUSD
+          Unit: USD
+        TimeUnit: MONTHLY
+        BudgetType: COST
+        CostTypes:
+          IncludeCredit: false
+          IncludeDiscount: true
+          IncludeOtherSubscription: true
+          IncludeRecurring: true
+          IncludeRefund: false
+          IncludeSubscription: true
+          IncludeSupport: true
+          IncludeTax: true
+          IncludeUpfront: true
+          UseAmortized: false
+          UseBlended: false
+
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+
+        - Notification:
+            NotificationType: FORECASTED
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+
+# ========================================================
+ # C LOUDWATCH LAMBDA ERROR-RATE ALARMS
+ # ========================================================
+
+  RegisterFunctionErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-RegisterFunction-error-rate"
+      AlarmDescription: Alarms when RegisterFunction error rate exceeds 5%
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 5
+      EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
+      AlarmActions:
+        - !Ref AlertsTopic
+      OKActions:
+        - !Ref AlertsTopic
+      Metrics:
+        - Id: errorRate
+          Expression: "(errors / invocations) * 100"
+          Label: ErrorRatePercent
+          ReturnData: true
+        - Id: errors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref RegisterFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: invocations
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref RegisterFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+
+  ListEventsFunctionErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-ListEventsFunction-error-rate"
+      AlarmDescription: Alarms when ListEventsFunction error rate exceeds 5%
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 5
+      EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+      OKActions:
+        - !Ref AlertsTopic
+      Metrics:
+        - Id: errorRate
+          Expression: "(errors / invocations) * 100"
+          Label: ErrorRatePercent
+          ReturnData: true
+
+        - Id: errors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref ListEventsFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+
+        - Id: invocations
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref ListEventsFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+
+  GetRegistrationsFunctionErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName:
+        Fn::Sub: "${AWS::StackName}-GetRegistrationsFunction-error-rate"
+      AlarmDescription: Alarms when GetRegistrationsFunction error rate exceeds 5%
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 5
+      EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: AlertsTopic
+      OKActions:
+        - Ref: AlertsTopic
+      Metrics:
+        - Id: errorRate
+          Expression: "(errors / invocations) * 100"
+          Label: ErrorRatePercent
+          ReturnData: true
+
+        - Id: errors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value:
+                    Ref: GetRegistrationsFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+
+        - Id: invocations
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions:
+                - Name: FunctionName
+                  Value:
+                    Ref: GetRegistrationsFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+
+  CancelRegistrationFunctionErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName:
+        Fn::Sub: "${AWS::StackName}-CancelRegistrationFunction-error-rate"
+      AlarmDescription: Alarms when CancelRegistrationFunction error rate exceeds 5%
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 5
+      EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: AlertsTopic
+      OKActions:
+        - Ref: AlertsTopic
+
+      Metrics:
+        - Id: errorRate
+          Expression: "(errors / invocations) * 100"
+          Label: ErrorRatePercent
+          ReturnData: true
+
+        - Id: errors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value:
+                    Ref: CancelRegistrationFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+
+        - Id: invocations
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions:
+                - Name: FunctionName
+                  Value:
+                    Ref: CancelRegistrationFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+
+# ========================================================
+  #  LAMBDA DURATION ALARM
+  # =======================================================
+
+  RegisterFunctionDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-RegisterFunction-duration"
+      AlarmDescription: Alarms when RegisterFunction average duration exceeds 8 seconds
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref RegisterFunction
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 8000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+      OKActions:
+        - !Ref AlertsTopic
+
+  # ========================================================
+  # API GATEWAY 5XX ERROR ALARM
+  # ========================================================
+
+  ApiGateway5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-api-5xx-errors"
+      AlarmDescription: Alarms when API Gateway returns 5xx errors
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref TicketingApi
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+      OKActions:
+        - !Ref AlertsTopic
 
   # ========================================================
   # CLOUDFRONT ORIGIN ACCESS CONTROL
@@ -436,3 +748,19 @@ Outputs:
       !Sub
         - 'https://${Domain}'
         - Domain: !GetAtt FrontendDistribution.DomainName
+
+  SNSTopicArn:
+    Description: SNS topic ARN used for CloudWatch alerts
+    Value: !Ref AlertsTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-SNSTopicArn"
+
+  MonthlyBudgetName:
+    Description: AWS monthly cost budget name
+    Value: !Ref MonthlyCostBudget
+    Export:
+      Name: !Sub "${AWS::StackName}-MonthlyBudgetName"
+
+  AlertEmail:
+    Description: Email address receiving monitoring and budget notifications
+    Value: !Ref AlertEmail

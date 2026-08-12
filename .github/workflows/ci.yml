@@ -211,35 +211,7 @@ jobs:
 
           echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
           echo "dist_id=$DIST_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Generate config.js from the deployed API URL
-        run: |
-          cat > frontend/config.js << EOF
-          // Auto-generated at $(date -u +"%Y-%m-%dT%H:%M:%SZ") by .github/workflows/ci.yml
-          // Do not hand-edit — this file is overwritten on every deploy to main.
-          window.APP_CONFIG = {
-            apiBaseUrl: "${{ needs.deploy.outputs.api_url }}"
-          };
-          EOF
-          cat frontend/config.js
-
-      - name: Sync frontend to S3
-        shell: bash
-        run: |
-          aws s3 sync frontend/ \
-            "s3://${{ steps.get-frontend.outputs.bucket }}/" \
-            --delete
-
-      - name: Invalidate CloudFront cache
-        shell: bash
-        run: |
-          DIST_ID="${{ steps.get-frontend.outputs.dist_id }}"
-
-          echo "Invalidating CloudFront distribution: $DIST_ID"
-
-          aws cloudfront create-invalidation \
-            --distribution-id "$DIST_ID" \
-            --paths "/*"
+    
       - name: Generate config.js from the deployed API URL
         run: |
           cat > frontend/config.js << EOF
