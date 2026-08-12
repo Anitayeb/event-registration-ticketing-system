@@ -2,6 +2,13 @@
 
 A serverless event registration API built with AWS SAM, AWS Lambda, API Gateway, and DynamoDB.
 
+## Live App
+## Live App
+
+- Frontend: https://regevents.online
+- API: [https://7x9t6hky1e.execute-api.us-east-1.amazonaws.com/prod]
+(https://7x9t6hky1e.execute-api.us-east-1.amazonaws.com/prod)
+
 ## Architecture
 
 ![Event Registration & Ticketing System architecture](docs/architecture.png)
