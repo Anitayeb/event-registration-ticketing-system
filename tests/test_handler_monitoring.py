@@ -14,7 +14,6 @@ import boto3
 import pytest
 from moto import mock_aws
 
-
 # Make lambda/ importable
 sys.path.insert(
     0,
@@ -96,9 +95,7 @@ def dynamodb_tables(aws_credentials):
                             "KeyType": "HASH",
                         }
                     ],
-                    "Projection": {
-                        "ProjectionType": "ALL"
-                    },
+                    "Projection": {"ProjectionType": "ALL"},
                 }
             ],
         )
@@ -185,10 +182,7 @@ class TestRegisterParticipants:
 
         body = json.loads(result["body"])
 
-        assert (
-            body["registration"]["email"]
-            == "jane@example.com"
-        )
+        assert body["registration"]["email"] == "jane@example.com"
 
     def test_missing_fields_returns_400(self, dynamodb_tables):
 
@@ -273,9 +267,7 @@ class TestRegisterParticipants:
             Key={
                 "eventId": "evt_001",
             },
-            UpdateExpression=(
-                "SET registeredCount = :c"
-            ),
+            UpdateExpression=("SET registeredCount = :c"),
             ExpressionAttributeValues={
                 ":c": 2,
             },
@@ -319,10 +311,7 @@ class TestRegisterParticipants:
 
         body = json.loads(result["body"])
 
-        assert (
-            body["registration"]["phone"]
-            == "+233 55 000 0000"
-        )
+        assert body["registration"]["phone"] == "+233 55 000 0000"
 
     def test_missing_phone_is_omitted_not_stored_as_empty(
         self,
@@ -411,10 +400,7 @@ class TestRegisterParticipants:
 
         body = json.loads(result["body"])
 
-        assert (
-            body["registration"]["name"]
-            == "JaneDoe"
-        )
+        assert body["registration"]["name"] == "JaneDoe"
 
     def test_overlong_name_is_truncated(
         self,
@@ -440,9 +426,7 @@ class TestRegisterParticipants:
 
         body = json.loads(result["body"])
 
-        assert len(
-            body["registration"]["name"]
-        ) == 100
+        assert len(body["registration"]["name"]) == 100
 
 
 # ==============================================================
@@ -483,11 +467,7 @@ class TestGetParticipants:
         dynamodb_tables,
     ):
 
-        event = make_event(
-            path_params={
-                "email": "nobody@example.com"
-            }
-        )
+        event = make_event(path_params={"email": "nobody@example.com"})
 
         result = _invoke(
             "getRegistrations",
@@ -518,11 +498,7 @@ class TestGetParticipants:
 
         result = _invoke(
             "getRegistrations",
-            make_event(
-                path_params={
-                    "email": "jane@example.com"
-                }
-            ),
+            make_event(path_params={"email": "jane@example.com"}),
         )
 
         assert result["statusCode"] == 200
@@ -546,11 +522,7 @@ class TestCancelRegistration:
 
         result = _invoke(
             "cancelRegistrations",
-            make_event(
-                path_params={
-                    "id": "does-not-exist"
-                }
-            ),
+            make_event(path_params={"id": "does-not-exist"}),
         )
 
         assert result["statusCode"] == 404
@@ -574,18 +546,12 @@ class TestCancelRegistration:
 
         assert reg_result["statusCode"] == 201
 
-        reg_id = json.loads(
-            reg_result["body"]
-        )["registration"]["registrationId"]
+        reg_id = json.loads(reg_result["body"])["registration"]["registrationId"]
 
         # Cancel registration
         cancel_result = _invoke(
             "cancelRegistrations",
-            make_event(
-                path_params={
-                    "id": reg_id
-                }
-            ),
+            make_event(path_params={"id": reg_id}),
         )
 
         assert cancel_result["statusCode"] == 200
@@ -593,15 +559,9 @@ class TestCancelRegistration:
         # Confirm registration was deleted
         lookup = _invoke(
             "getRegistrations",
-            make_event(
-                path_params={
-                    "email": "jane@example.com"
-                }
-            ),
+            make_event(path_params={"email": "jane@example.com"}),
         )
 
         assert lookup["statusCode"] == 200
 
-        assert json.loads(
-            lookup["body"]
-        )["registrations"] == []
+        assert json.loads(lookup["body"])["registrations"] == []
