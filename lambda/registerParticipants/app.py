@@ -65,7 +65,9 @@ def lambda_handler(event, context):
     try:
         event_lookup = events_table.get_item(Key={"eventId": event_id})
     except ClientError as e:
-        return error_response(500, f"Could not verify event: {e.response['Error']['Message']}")
+        return error_response(
+            500, f"Could not verify event: {e.response['Error']['Message']}"
+        )
 
     if "Item" not in event_lookup:
         return error_response(404, f"Event '{event_id}' not found")
@@ -80,13 +82,15 @@ def lambda_handler(event, context):
         )
         for reg in existing.get("Items", []):
             if reg["eventId"] == event_id:
-                return error_response(409, "This email is already registered for this event")
+                return error_response(
+                    409, "This email is already registered for this event"
+                )
     except ClientError as e:
-       return error_response(
-    500,
-    f"Could not check existing registrations: "
-    f"{e.response['Error']['Message']}",
-)
+        return error_response(
+            500,
+            f"Could not check existing registrations: "
+            f"{e.response['Error']['Message']}",
+        )
     # ---- Capacity check (optional field on the event item) ----
     capacity = event_item.get("capacity")
     registered_count = event_item.get("registeredCount", 0)
@@ -115,6 +119,8 @@ def lambda_handler(event, context):
             ExpressionAttributeValues={":inc": 1, ":zero": 0},
         )
     except ClientError as e:
-        return error_response(500, f"Could not save registration: {e.response['Error']['Message']}")
+        return error_response(
+            500, f"Could not save registration: {e.response['Error']['Message']}"
+        )
 
-    return response(201, {"message": "Registration successful", "registration": item}) 
+    return response(201, {"message": "Registration successful", "registration": item})
